@@ -25,7 +25,7 @@ import vigo
 import radius
 from config import log_bloqueio as log
 from utils import desconecta_cliente
-
+from macip import contas_macip
 
 class Cliente(object):
 
@@ -42,6 +42,7 @@ class Cliente(object):
         vigo.insere_auditoria_cliente(self.id, historico_auditoria)
 
         self.desconecta_todos_logins_do_cliente()
+        self.desativa_contas_macip()
 
     def libera(self):
         log.info('Liberando cliente {0}'.format(self))
@@ -56,6 +57,7 @@ class Cliente(object):
         vigo.insere_auditoria_cliente(self.id, historico_auditoria)
 
         self.desconecta_todos_logins_do_cliente()
+        self.ativa_contas_macip()
 
     def libera_cadastro(self):
         self.cursor.execute('UPDATE cadastro_clientes SET situacao="L" WHERE id=%s', (self.id,))
@@ -77,6 +79,14 @@ class Cliente(object):
     def desconecta_todos_logins_do_cliente(self):
         for username in self.usernames:
             desconecta_cliente(radius.UserConnection(username))
+
+    def desativa_contas_macip(self):
+        for conta_macip in contas_macip(self.id):
+            conta_macip.desativa()
+
+    def ativa_contas_macip(self):
+        for conta_macip in contas_macip(self.id):
+            conta_macip.ativa()
 
     @property
     def usernames(self):
