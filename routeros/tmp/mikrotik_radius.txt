@@ -1,0 +1,228 @@
+Apenas complementando quem quiser ao inves de crias os grupos no mk, 
+e fazer isso direto no mysql com o freeradius basta inserir estes 
+dados no banco de dados do freeradius
+
+Cria um grupo com velocidade de 128kbps de download e upload, e não permite login simultaneo
+### Inserir Grupo
+INSERT INTO radgroupreply (GroupName, Attribute, Op, Value) VALUES ("128", "Mikrotik-Rate-Limit", ":=", "128k/128k");
+INSERT INTO radgroupcheck (GroupName, Attribute, Op, Value) VALUES ("128", "Simultaneous-Use", ":=", "1");
+
+Cria um usuário, define a senha o IP, e o MAC
+### Inserir Usuário
+INSERT INTO radcheck (UserName, Attribute, Op, Value) VALUES ("fulano", "Password", ":=", "123");
+INSERT INTO radcheck (UserName, Attribute, Value) VALUES ("fulano", "Calling-Station-ID", "00:11:22:33:44:55");
+INSERT INTO radcheck (UserName, Attribute, Value) VALUES ("fulano", "Framed-IP-Address", "192.168.0.4");
+
+Define o grupo no qual o usuário pertence
+### Inserir Usuário em um Grupo
+INSERT INTO usergroup (UserName, GroupName) VALUES ("fulano", "128");
+
+Cria um grupo onde vc pode bloquear o usuário e definir de quanto em 
+quanto tempo ele ira receber uma mensagem de aviso, e sua banda fica 
+travada em 64kbps, para usar este grupo deve se alterar o grupo ao 
+qual o usuário pertence
+### Inserir Grupo para Usuários Bloqueados
+INSERT INTO radgroupreply (GroupName, Attribute, Op, Value) VALUES ("Bloqueados", "Mikrotik-Rate-Limit", ":=", "64k/64k");
+INSERT INTO radgroupcheck (GroupName, Attribute, Op, Value) VALUES ("Bloqueados", "Simultaneous-Use", ":=", "1");
+INSERT INTO radgroupreply (GroupName, Attribute, Op, Value) VALUES ("Bloqueados", "Mikrotik-Advertise-URL", ":=", "http://www.seusite.com.br/aviso.html");
+INSERT INTO radgroupreply (GroupName, Attribute, Op, Value) VALUES ("Bloqueados", "Mikrotik-Advertise-Interval", ":=", "00:10:00");
+
+Removendo o usuário fulano e adicionando ele no grupo Bloqueados
+### Apagar Usuário de um Grupo
+DELETE FROM usergroup WHERE UserName = 'fulano';
+INSERT INTO usergroup (UserName, GroupName) VALUES ("fulano", "Bloqueados");
+
+Criar grupo com brust
+Cria um grupo com velocidade de 128kbps de download e upload e burst 
+de 256kbps, e não permite login simultaneo
+### Inserir Grupo
+INSERT INTO radgroupreply (GroupName, Attribute, Op, Value) VALUES ("128burst", "Mikrotik-Rate-Limit", ":=", "128k/128k 256k/256k 200k/200k 180/180");
+INSERT INTO radgroupcheck (GroupName, Attribute, Op, Value) VALUES ("128burst", "Simultaneous-Use", ":=", "1");
+
+Ae quem tive mais dica posta ae, ou quem tive as moral coloca esse otimo post no wiki
+
+
+
+=================================
+
+Ola pessoal... acabei de montar meu sistema utilizando mikrotik + freeradius + mysql + hotspot... 
+como tive um pouco de dificuldade para faze-lo funcionar e tive que procurar em varios forums 
+gringos... venho aqui compartilhar com a galera passo a passo o que foi feito para funcionar 
+nesse esquema.
+
+Lembrando que o freeradius voce vai instalar em uma maquina separada... ja que nao se pode 
+instalar e nem vem instalado o radius no mikrotik.
+
+Primeiramente faça download do Freeradius
+
+wget ftp://ftp.freeradius.org/pub/radius/...s-1.1.7.tar.gz
+
+Vamos agora compilar o freeradius.
+
+./configure --prefix=/usr/local/radius --with-rlm-mysql-lib-dir=/usr/local/lib/mysql --with-rlm-mysqlinclude-dir=/usr/local/include/mysql --enable-ltdl-install
+
+make
+make install
+
+Freeradius esta instalado no /usr/local/radius
+
+Agora vamos configurar o banco de dados...
+Esteja certo que seu mysqld esteja instalado e rodando.
+
+para adicionar a base de dados do radius no seu mysql faca o seguinte:
+
+mysql -u root -p
+
+vai pedir a senha ... vc loga no mysql..
+
+agora vamos criar o banco:
+
+CREATE DATABASE radius;
+
+apos digite exit para sair do mysql.
+
+agora vamos importar a base de dados do mysql para seu banco chamado radius:
+mysql -u root -p radius < /usr/local/radius/share/doc/freeradius/examples/mysql.sql
+
+Com isso suas tabelas vao ser criadas... agora vamos criar um usuario:
+
+primeiro vamos alimentar a tabela radcheck nessa tabela vai ficar o nome do usuario e a senha de autenticacao do radius:
+
+mysql -u root -p
+
+use radius;
+
+INSERT INTO radcheck (UserName, Attribute, Value) VALUES ("fulano", "Password", "senha");
+
+Valores opcionais... esses sao para quem querem checar tambem pelo radius... o IP do cliente e o MAC... assim casando IP - Mac - Login - Senha:
+
+INSERT INTO radcheck (UserName, Attribute, Value) VALUES ("fulano", "Calling-Station-ID", "00:11:22:33:44:55");
+INSERT INTO radcheck (UserName, Attribute, Value) VALUES ("fulano", "Framed-IP-Address", "192.168.0.20");
+
+Pronto... agora vamos inserir atributos no radreply... na maneira que configurei meu radius... 
+resolvi nao usar os grupos do radius... e sim do proprio mikrotik... a frente voces vao entender.
+
+INSERT INTO radreply (UserName, Attribute, Value) VALUES ("fulano", "Mikrotik-Group", "128k");
+
+Pronto... terminarmos de cadastrar um cliente no radius.... o valor 128k equivale ao grupo que vamos criar no mikrotik daqui a pouco.
+
+Muito Importante:
+
+É necessario que vc coloque na lista de dictionarys do radius o dictionary do mikrotik faça o download do dictionary do mikrotik:
+
+cd /usr/local/radius/share/freeradius
+wget http://www.mikrotik.com/Documentatio...onary.mikrotik
+vi dictionary
+
+Apos a ultima entrada de Include adicione esse novo include.
+$INCLUDE dictionary.mikrotik
+
+entre na pasta de configuracoes do freeradius
+cd /usr/local/radius/etc/raddb
+
+Agora vamos editar os arquivos de configuracao:
+
+edite o arquivo clients.conf
+
+adicione duas entrada uma com o ip do mikrotik... e outra com ip da sua maquina... 
+voce vai entender na hora que chegar a configuracao dos realms.
+
+Exemplo:
+
+client 200.200.200.200 {
+secret = (senha que vc escolher para acesso do mikrotik)
+shortname = mikrotik
+nastype = other
+}
+
+client 200.200.200.1 {
+secret = (senha que vc escolher para acesso do proxy (realm))
+shortname = radius
+nastype = other
+}
+
+agora vamos editar o radiusd.conf
+
+na parte authorize ficam ativas as opcoes:
+preprocess, chap, mschap, suffix, eap, sql
+
+na parte preacct ficam ativas as opcoes:
+preprocess, acct_unique, suffix
+
+na parte accounting ficam ativas as opcoes:
+detail, unix, sql, radutmp
+
+na parte session ficam ativas as opcoes:
+radutmp, sql
+
+na parte post-auth ficam ativas as opcoes:
+sql
+
+pronto... terminamos de editar o radiusd.conf
+
+Agora vamos configurar o seu realm... que seria o que vem depois da @ no login do cliente... tendo em 
+vista que muitos provedores utilizam o login do cliente igual o do email para seguirem um padrao.
+
+edite o arquivo proxy.conf
+
+e adicione uma entrada no final assim:
+
+realm seudominio.com.br {
+type = radius
+authhost = 200.200.200.1 ( ip da maquina aonde vc esta instalando o freeradius)
+accthost = 200.200.200.1 ( ip da maquina aonde vc esta instalando o freeradius)
+secret = senha ( senha que vc colocou no seu clients.conf )
+}
+
+
+Pronto seu servidor radius ja esta todo configurado agora... vamos rodar ele em modo debug.... pra ver se ocorre algum erro e caso nao ocorra na inicializacao.... podemos ver se o usuario esta autenticando.
+
+
+Vamos configurar agora o mikrotik.
+
+Voce vai criar um hotspot como qualquer outro.... tem varios posts no forum ensinando como criar certinho nao vou entrar em detalhes aqui....
+
+Va em IP - Hotspot
+Na Aba Servers Clique em Profile
+
+de 2 clicks no profile que seu servidor hotspot esta utilizando.
+
+Clique na aba Radius
+ative a opcao Use Radius
+e deixe ativa a opcao accounting e mude de wireless para ethernet.
+
+agora... no menu principal clique em Radius
+clique no sinal de + e adicione um radius.
+
+Em Service deixe somente ativo o hotspot
+Em Address coloque o ip do seu servidor radius
+Em Secret Coloque a senha que voce configurou para acesso do ip do seu mikrotik
+Em Realm Coloque seu dominio... que vc utilizou no proxy.conf
+
+Agora... vamos criar os grupos do hotspot
+
+IP - Hotspot - Users
+clique em Profiles
+adicione um novo profile ( grupo )
+preencha assim:
+Name: 128k
+Shared Users: 1
+Rate Limit: 128k/128k
+
+pronto.... seu grupo esta criado... com banda de 128k
+
+uma ideia nessa parte eh vc tb criar grupos para aviso de debito .... vc coloca uyma banda tipo 64... e ativa a opcao advertise. nao vou explicar sobre o advertise porque voces podem encontrar muita coisa no forum
+
+aqui tenho um grupo para o aviso.. e outro para o bloqueio... no de bloqueio coloco a banda dele ativo o session timeout ai o mikrotik fica derrubando ele... da a mensagem de corte do advertise e apos derruba o cliente.
+
+
+
+Pronto.... Seu mikrotik esta prontinho para autenticar por radius... com controle de mac / ip / login / senha e de quebra... voce pode controlar tudooo por banco de dados.
+
+Amigos... esse é o primeiro tutorial que escrevo... caso tenha esquecido algo por favor me perdoem.... se estiver algo errado por favor espero que tenham paciencia e possam me corrigir.
+
+Agradeco a todos do forum... pois muito aprendi por aqui e quero agora compartilhar minhas aventurar com voces.
+
+Abracos.
+Glauber Mattar
+AirKing está offline   	

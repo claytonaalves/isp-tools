@@ -1,0 +1,182 @@
+Amigo do forum tenho visto varios pots do pessoal tentando fazer 
+o captive portal no mk sem usar hotspot ou pppoe, bem aqui no 
+provedor como ainda estou terminando de implantar o Vigo Provider, 
+ainda estou usando apenas MAC + IP pra implementar algum tipo de 
+seguranção ao provedor, porem tive a necessidade de enviar alguns 
+avisos a clientes com boletos em atrasos e a melhor forma 
+encontrada foram as seguintes:
+
+Antes tenho de lembrar que estou utilizando no servidor do captive 
+portal apache e php, aqui no site tem varios tutorias de como implementa-los
+
+A primeira forma de usar a regra ela realmente atua como um captive 
+portal pois captura a url do cliente, o envia pra pagina de aviso 
+ou site do provedor e depois de um tempo envia o cliente pra url 
+que foi capturada
+
+Regra Mikrotik
+
+/ip firewall nat 
+add chain=dstnat in-interface=!BACKBONE dst-address=!200.200.200.2 protocol=tcp dst-port=80 \
+connection-limit=!1,32 src-address-list=AVISO action=dst-nat to-addresses=200.200.200.2 \
+to-ports=80 comment=Aviso
+
+Entendendo a regra sera redirecionado todo o trafego da porta 80, 
+dos IP cadastrados em src-address-list AVISO, que tenha como destino 
+qualquer IP com exeção do IP do servidor onde roda o captive, sera 
+redirecionado pra ele na porta 80, sera redireciona o IP apenas quando 
+ele tiver o limite de 1 sessão na porta 80, apos isso ele não cai mais 
+nessa regra sendo liberado o acesso a internet
+
+Script que determina de quanto em quanto tempo o cliente sera enviado 
+para o captive portal
+
+/ system scheduler 
+add name="Aviso-ON" on-event="\
+  /ip firewall nat { disable \[ find comment=Aviso \] };
+  /ip firewall nat { reset-counters \[ find comment=Aviso \] }; 
+  /ip firewall nat { enable \[ find comment=Aviso \] }" \
+start-date=oct/25/2007 start-time=12:25:00 interval=1h comment="" disabled=no 
+
+Esta regra desativa a regra de redirecionamento sera o contador dela 
+e habilita novamente é aqui que vc determina de quanto em quanto tempo 
+o cliente vai pra pagina do captive portal 
+
+Virtual Host
+
+---------------------------------------------------------------------------------------
+
+<VirtualHost *:80>
+
+  DocumentRoot "/var/www/html/"
+
+    <Directory "/var/www/html/">
+      allow from all
+      Options +Indexes
+    </Directory>
+
+  CheckSpelling On
+  Options +FollowSymLinks
+  RewriteEngine on
+
+# 200\.200\.200\.200 alterar pelo IP da interface do servidor conectado a internet
+  RewriteCond %{HTTP_HOST} !^200\.200\.200\.2 [NC]
+
+  RewriteCond %{HTTP_HOST} !^$
+
+# 200.200.200.200 alterar pelo IP da interface do servidor conectado a rede dos clientes
+  RewriteRule ^(.*)$ "http://200.200.200.2:80/index.php?url=%{HTTP_HOST}" [L]
+
+</VirtualHost>
+
+---------------------------------------------------------------------------------------
+
+Página index.php
+
+---------------------------------------------------------------------------------------
+
+<?php
+
+$URL = $_GET['url'];
+
+?>
+<html>
+<head>
+<title>Aviso Velbras</title>
+
+<?php
+
+if ( $URL <> "" ) {
+        echo "<meta http-equiv=\"refresh\" content=\"10;URL=http://";echo "$URL\">";
+};
+
+?>
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body>
+<p><strong>Prezado assinante </strong></p>
+<p>
+  Essa &eacute; uma mensagem autom&aacute;tica e enviada a todos os 
+  clientes que constam em   aberto o pagamento referente &agrave; 
+  mensalidade de <strong>OUTUBRO DE 2007</strong>, com vencimento <strong>10/11/2007.</strong>
+</p>
+<p>
+  Se houver qualquer problema no recebimento do mesmo, lembramos que o 
+  pagamento pode ser feito em nosso escrit&oacute;rio, mesmo sem boleto, 
+  bastando apenas informar o nome do assinante, o valor da mensalidade e a 
+  data de vencimento e iremos lhe conceder um recibo da Velbras como 
+  comprovante do pagamento. 
+</p>
+<p>
+  Solicitamos suas provid&ecirc;ncias at&eacute; 18h da pr&oacute;xima 
+  sexta-feira, dia <strong>7 de DEZEMBRO</strong>, evitando assim que 
+  seu acesso seja interrompido.
+</p>
+<p>O pagamento pode ser efetuado em um de nosso escrit&oacute;rio:</p>
+<p>Rua Bar&atilde;o do Rio Branco, 538 - Centro, Potirendaba/SP</p>
+<p>
+  Se o pagamento j&aacute; foi efetuado, pedimos o favor de entrar 
+  em contato, informando a data e local de pagamento. 
+</p>
+<p>
+  Qualquer d&uacute;vida entre em contato conosco pelo tel: 
+  <strong>(17)3249-4530</strong>, de segunda   a sexta, de 9 &agrave;s 
+  18h e s&aacute;bado de 9 &agrave;s 13h 
+</p>
+<p>Atenciosamente, </p>
+<p><strong>Central de Informa&ccedil;&otilde;es Velbras</strong><br />
+  Velbras Solu&ccedil;&otilde;es em Internet pra Voc&ecirc; e sua   Empresa<br />
+  financeiro@velbras.com.br<br />
+(17) 3249-4530</p>
+</body>
+</html>
+
+---------------------------------------------------------------------------------------
+
+A segunda forma muda apenas a pagina e não a necessidade do virtual host,
+sendo assim não a necessidade de se usar uma maquina rodando o apache e php,
+podendo usar qualquer servidor web como IIS, no Windows XP, Windows 98 =)
+
+index.htm
+
+---------------------------------------------------------------------------------------
+
+<html>
+<head>
+<title>Aviso Velbras</title>
+
+<meta http-equiv="refresh" content="10;URL=http://www.velbras.com.br">
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body>
+<p><strong>Prezado assinante </strong></p>
+<p>Essa &eacute; uma mensagem autom&aacute;tica e enviada a todos os clientes que constam em   aberto o pagamento referente &agrave; mensalidade de <strong>OUTUBRO DE 2007</strong>, com vencimento    <strong>10/11/2007.</strong></p>
+<p>Se houver qualquer problema no recebimento do mesmo, lembramos que o   pagamento pode ser feito em nosso escrit&oacute;rio, mesmo sem boleto, bastando apenas informar o nome do assinante, o valor da mensalidade e a data de vencimento e iremos lhe conceder um recibo da Velbras como comprovante do pagamento. </p>
+<p>Solicitamos suas provid&ecirc;ncias at&eacute; 18h da pr&oacute;xima sexta-feira, dia <strong>7 de DEZEMBRO</strong>, evitando assim que seu acesso seja interrompido.</p>
+<p>O pagamento pode ser efetuado em um de nosso escrit&oacute;rio:</p>
+<p>Rua Bar&atilde;o do Rio Branco, 538 - Centro, Potirendaba/SP</p>
+<p>Se o pagamento j&aacute; foi efetuado, pedimos o favor de entrar em contato, informando a data e local de pagamento. </p>
+<p>Qualquer d&uacute;vida entre em contato conosco pelo tel: <strong>(17)3249-4530</strong>, de segunda   a sexta, de 9 &agrave;s 18h e s&aacute;bado de 9 &agrave;s 13h </p>
+<p>Atenciosamente, </p>
+<p><strong>Central de Informa&ccedil;&otilde;es Velbras</strong><br />
+  Velbras Solu&ccedil;&otilde;es em Internet pra Voc&ecirc; e sua   Empresa<br />
+  financeiro@velbras.com.br<br />
+(17) 3249-4530</p>
+</body>
+</html>
+
+---------------------------------------------------------------------------------------
+
+Lembrando que aqui esta da seguinte forma
+
+200.200.200.0/24 rede dos servidores/rede do provedor
+192.168.100.0/24 rede dos clientes
+
+Falow Galera
+
+Clecio
+
+

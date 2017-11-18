@@ -1,0 +1,54 @@
+ 0 R  server=hotspot1 user="sirlenediniz" address=172.0.250.92
+      mac-address=00:19:E0:84:5F:E4 login-by="http-pap" uptime=4m48s
+      keepalive-timeout=2m
+
+ 1 R  server=hotspot1 user="JOAOOLIVEIRA" address=172.0.250.93
+      mac-address=00:1F:1F:11:E7:62 login-by="http-pap" uptime=12m40s
+      keepalive-timeout=2m
+
+ 2 R  server=hotspot1 user="evc" address=172.0.250.96
+      mac-address=00:1F:1F:19:45:CF login-by="http-pap" uptime=20m4s
+      keepalive-timeout=2m
+
+ 3 R  server=hotspot1 user="jho" address=172.0.250.99
+      mac-address=00:0E:E8:EE:8E:F0 login-by="http-pap" uptime=35m1s
+      keepalive-timeout=2m
+
+ 4 R  server=hotspot1 user="marceloalvest" address=172.0.250.100
+      mac-address=00:18:E7:2B:6A:82 login-by="http-pap" uptime=25m49s
+      keepalive-timeout=2m
+
+ 5 R  server=hotspot1 user="cemel" address=172.0.250.102
+      mac-address=00:18:E7:0C:52:D1 login-by="http-pap" uptime=27m10s
+      keepalive-timeout=2m
+
+ 6 R  server=hotspot1 user="ginonet" address=172.0.250.105
+      mac-address=00:15:F2:F4:FB:07 login-by="http-pap" uptime=41m56s
+      keepalive-timeout=2m
+
+ 7 R  server=hotspot1 user="ginonet3" address=172.0.250.106
+      mac-address=00:1F:3A:56:9C:7F login-by="http-pap" uptime=41m25s
+      keepalive-timeout=2m
+
+ 8 R  server=hotspot1 user="darlan" address=172.0.250.107
+      mac-address=00:1F:1F:19:48:19 login-by="http-pap" uptime=41m54s
+      keepalive-timeout=2m
+
+ 9 R  server=hotspot1 user="fbpj" address=172.0.250.111
+      mac-address=00:02:78:E3:ED:42 login-by="http-pap" uptime=1h2m4s
+      keepalive-timeout=2m
+
+10 R  server=hotspot1 user="jessicamartins" address=172.0.250.113
+      mac-address=00:18:E7:27:D8:3A login-by="http-pap" uptime=1h6m21s
+      keepalive-timeout=2m
+
+11 R  server=hotspot1 user="noemiacastilho" address=172.0.250.124
+      mac-address=00:18:E7:27:D8:13 login-by="http-pap" uptime=1h6m51s
+      keepalive-timeout=2m
+
+teste
+
+clayton
+
+
+sldkfjsldkfjsdlf
